@@ -38,7 +38,7 @@ w = torch.exp(-2j * np.pi * m_data * delay)/V
 def Prep(data):
         dic_data = isinstance(data, dict)
         if dic_data:
-            angle = torch.tensor(data["angle"]).unsqueeze(dim=0)
+            angle = torch.tensor(data["angle"]).unsqueeze(dim=0) 
             input = torch.from_numpy(data["mix"]).unsqueeze(dim=0).float()
             input = torch.transpose(input, 2, 1)
             data["mix"] = input.squeeze()
@@ -54,11 +54,11 @@ def Prep(data):
         mag, ph, real, image = stft.transform(input.reshape(-1, input.size()[-1]))
 
         pad = Variable(torch.zeros(mag.size()[0], mag.size()[1], 1)).type(input.type())
-        mag = torch.cat([mag, pad], -1)
-        ph = torch.cat([ph, pad], -1)
-        channel = mag.size()[-1]
-        mag = mag.view(batch_size, n_mic, -1, channel)
-        ph = ph.view(batch_size, n_mic, -1, channel)
+        mag = torch.cat([mag, pad], -1) #(batchsize, 6 * 97, frame_length)
+        ph = torch.cat([ph, pad], -1) #(batchsize, 6 * 97, frame_length)
+        channel = mag.size()[-1] # channel=frame_length
+        mag = mag.view(batch_size, n_mic, -1, channel)#(batchsize, 6, -1, frame_length)
+        ph = ph.view(batch_size, n_mic, -1, channel)#(batchsize, 6, -1, frame_length)
         LPS = 10 * torch.log10(mag ** 2 + 10e-20)
         complex = (mag * torch.exp(ph * 1j))
         IPD_list = []
@@ -71,7 +71,7 @@ def Prep(data):
             IPD = IPD.unsqueeze(dim=1)
             IPD_list.append(IPD)
         IPD = torch.cat(IPD_list, dim=1)
-        complex = complex.unsqueeze(dim=2).expand(-1, -1, n_grid, -1, -1)
+        complex = complex.unsqueeze(dim=2).expand(-1, -1, n_grid, -1, -1) #(batchsize, 6, 36, 97, frame_length)
         for i in range(n_sp):
             ang = angle[:, i]
             steering_vector = __get_steering_vector(ang, pairs)
