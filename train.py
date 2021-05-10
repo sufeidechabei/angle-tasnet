@@ -18,6 +18,7 @@ from asteroid.engine.system import System
 from conv_tasnet import TasNet
 from dataset import make_dataloader
 from torch.nn import L1Loss
+from preprocess import Prep, n_sp
 
 # Keys which are not in the conf.yml file can be added here.
 # In the hierarchical dictionary created when parsing, the key `key` can be
@@ -33,18 +34,15 @@ class TACSystem(System):
     def common_step(self, batch, batch_nb, train=True):
         data = batch
         targets = torch.stack(data["ref"]).transpose(1, 0).squeeze()
-        inputs = torch.transpose(data["mix"], 2, 1)
-        angle = data['angle']
         #valid_channels = torch.ones(len(inputs), 1) * 6
         #valid_channels = valid_channels.to(dtype=torch.long, device=inputs.device)
         # valid_channels contains a list of valid microphone channels for each example.
         # each example can have a varying number of microphone channels (can come from different arrays).
         # e.g. [[2], [4], [1]] three examples with 2 mics 4 mics and 1 mics.
         ests_list = []
-        print(inputs.size())
-        print(angle.size())
-        for i in range(3):
-             est_targets = self.model(inputs, angle[:, i])
+        inputs = data["mix"]
+        for i in range(n_sp):
+             est_targets = self.model(inputs, data[i])
              ests_list.append(est_targets)
         est = torch.cat(ests_list, dim=1)
         loss = self.loss_func(est, targets)  # first channel is used as ref
@@ -80,6 +78,11 @@ def main(conf):
                                  batch_size=conf['training']['batch_size'],
                                  chunk_size=conf['data']['chunk'],
                                  num_workers=conf['training']['num_workers'])
+    #Prep(train_loader)
+    #Prep(val_loader)
+    #for data in train_loader:
+        #print(type(data[0]))
+
 
     model = TasNet()
     # model_parameters = filter(lambda p: p.requires_grad, model.parameters())
@@ -152,9 +155,9 @@ def main(conf):
     system.load_state_dict(state_dict=state_dict["state_dict"])
     system.cpu()
 
-    to_save = system.model.serialize()
+    #to_save = system.model.serialize()
     #to_save.update(train_set.get_infos())
-    torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
+    torch.save(system.model.state_dict(), os.path.join(exp_dir, "best_model.ckpt"))
     #save_publishable(
         #os.path.join(exp_dir, "publish_dir"),
         #to_save,

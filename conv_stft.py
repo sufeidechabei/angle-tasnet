@@ -94,7 +94,7 @@ class STFT(torch.nn.Module):
         magnitude = torch.sqrt(real_part ** 2 + imag_part ** 2)
         phase = torch.atan2(imag_part.data, real_part.data)
 
-        return magnitude, phase
+        return magnitude, phase, real_part, imag_part
 
     def inverse(self, magnitude, phase):
         """Call the inverse STFT (iSTFT), given magnitude and phase tensors produced

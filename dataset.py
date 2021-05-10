@@ -3,12 +3,14 @@ import random
 import numpy as np
 import os
 import scipy.io.wavfile as wf
+import torch
 
 import torch.utils.data as dat
 from utils import MAX_INT16
 from deepbeam import OnlineSimulationDataset, simulation_config, vctk_audio, truncator,\
     ms_snsd, simulation_config_test
 from torch.utils.data.dataloader import default_collate
+from preprocess import Prep
 
 
 def make_dataloader(train=True,
@@ -78,6 +80,8 @@ class ChunkSplitter(object):
         chunk["mix"] = eg["mix"][s:s + self.chunk_size]
         chunk["ref"] = [ref[..., s:s + self.chunk_size] for ref in eg["ref"]]
         chunk["angle"] = np.array(eg["angle"])
+        Prep(chunk)
+
         return chunk
 
     def split(self, eg):
@@ -94,7 +98,8 @@ class ChunkSplitter(object):
             chunk["ref"] = [
                 np.pad(ref, (0, P), "constant") for ref in eg["ref"]
             ]
-            chunk['angle'] = np.array(eg['angle'])
+            chunk['angle'] = torch.from_numpy(np.array(eg['angle']))
+            Prep(chunk)
             chunks.append(chunk)
         else:
             # random select start point for training
