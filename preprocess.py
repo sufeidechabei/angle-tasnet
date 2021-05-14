@@ -52,6 +52,8 @@ def Prep(data):
         batch_size = input.size(0)
         mag, ph, real, image = stft.transform(input.reshape(-1, input.size()[-1]))
 
+
+
         pad = Variable(torch.zeros(mag.size()[0], mag.size()[1], 1)).type(input.type())
         mag = torch.cat([mag, pad], -1)
         ph = torch.cat([ph, pad], -1)
@@ -75,7 +77,7 @@ def Prep(data):
             ang = angle[:, i]
             steering_vector = __get_steering_vector(ang, pairs)
             steering_vector = steering_vector.unsqueeze(dim=-1)
-            AF = steering_vector * IPD
+            AF = steering_vector * torch.exp(1j * IPD)
             AF = AF/(torch.sqrt(AF.real ** 2 + AF.imag**2) + 10e-20)
             AF = AF.sum(dim=1)
             w_ = w.unsqueeze(dim=0).expand(AF.size()[0], -1, -1, -1).unsqueeze(-1).expand(-1, -1, -1, -1, channel)
@@ -115,3 +117,8 @@ def __get_steering_vector(angle, pairs):
 
 if __name__ == "__main__":
     pass
+    import numpy as np
+
+    data = {"mix":np.random.rand(36000, 6), "angle":[2.4, 2.5, 3.1]}
+
+    Prep(data)
