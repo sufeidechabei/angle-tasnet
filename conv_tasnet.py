@@ -71,7 +71,6 @@ class TasNet(nn.Module):
         # waveform encoder
         enc = self.encoder(output[:, :1])  # B, N, L
         enc_output = torch.cat([enc, feature], dim=1)
-
         # generate masks
         masks = torch.sigmoid(self.TCN(enc_output)).view(batch_size, self.num_spk, self.enc_dim, -1)  # B, C, N, L
         masked_output = enc.unsqueeze(1) * masks  # B, C, N, L

@@ -19,6 +19,7 @@ from asteroid.models import save_publishable
 from asteroid.utils import tensors_to_device
 from deepbeam import OnlineSimulationDataset,vctk_audio, truncator, ms_snsd, simulation_config_test
 from preprocess import Prep
+from scipy.io.wavfile import write
 
 parser = argparse.ArgumentParser()
 
@@ -35,6 +36,7 @@ compute_metrics = ["si_sdr"]  # , "sdr", "sir", "sar", "stoi"]
 
 def main(conf):
     model_path = os.path.join(conf["exp_dir"], "best_model.ckpt")
+    #model_path = "/tmp/pycharm_project_591/exp/tmp/checkpoints/epoch=8-step=2519.ckpt"
     pretrain = torch.load(model_path, map_location="cpu")
     model = TasNet()
     model.load_state_dict(pretrain)
@@ -53,6 +55,7 @@ def main(conf):
     torch.no_grad().__enter__()
     input_sdr_list = []
     output_sdr_list = []
+    model.eval()
     for idx in tqdm(range(len(test_set))):
 
         # Forward the network on the mixture.

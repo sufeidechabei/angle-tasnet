@@ -55,7 +55,8 @@ class OnlineData(object):
         return {
             "mix": mix.astype(np.float32),
             "ref": [r.astype(np.float32) for r in ref],
-            "angle": self.data[index][2]
+            "angle": self.data[index][2],
+            "R": self.data[index][5]
         }
 
 
@@ -80,6 +81,7 @@ class ChunkSplitter(object):
         chunk["mix"] = eg["mix"][s:s + self.chunk_size]
         chunk["ref"] = [ref[..., s:s + self.chunk_size] for ref in eg["ref"]]
         chunk["angle"] = np.array(eg["angle"])
+        chunk["R"] = np.array(eg["R"])
         Prep(chunk)
 
         return chunk

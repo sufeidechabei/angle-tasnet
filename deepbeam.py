@@ -351,7 +351,8 @@ class OnlineSimulationDataset(Dataset):
 
             if os.path.exists(cache_path):
                 cache_result = np.load(cache_path, allow_pickle=True)['data']
-                return cache_result[0], cache_result[1], cache_result[2], cache_result[3], cache_result[4]
+                return cache_result[0], cache_result[1], cache_result[2], cache_result[3], cache_result[4],\
+                       cache_result[5]
         else:
             cache_path = None
 
@@ -395,7 +396,7 @@ class OnlineSimulationDataset(Dataset):
 
         # save cache
         if cache_path is not None:
-            np.savez_compressed(cache_path, data=[total, premix_w_reverb, source_angles, premix, background])
+            np.savez_compressed(cache_path, data=[total, premix_w_reverb, source_angles, premix, background, R])
         if premix_w_reverb.shape[-1] <= 18000:
             offset = 18000 - premix_w_reverb.shape[-1]
             premix_w_reverb = np.pad(premix_w_reverb, ((0, 0), (0, 0), (0, offset)), "constant")
@@ -481,7 +482,10 @@ vctk_audio = VCTKAudio(vctk)
 truncator = RandomTruncate(3 * fs, 5, 0.4)
 dataset = OnlineSimulationDataset(vctk_audio, ms_snsd, 150, simulation_config, truncator, None, 100)
 
-R_global=generate_mic_array(R_MIC, N_MIC, (0,0,0))
+
+
+
+
 
 if __name__ == "__main__":
     for i in range(10):

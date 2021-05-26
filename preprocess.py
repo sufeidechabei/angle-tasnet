@@ -12,10 +12,9 @@ window = 'hann'
 win_length = int(sr * 0.0025)
 stft = STFT(filter_length=filter_length, hop_length=hop_length, win_length=win_length,
             window=window)
-pairs = ((0, 3), (1, 4), (2, 5), (0, 1), (2, 3), (4, 5))
-ori_pairs = ((0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5))
 
-mic_array_layout = R_global-np.tile(R_global[:,0].reshape((3,1)), (1, n_mic))
+
+
 m_total = 97
 frequency_vector = np.linspace(0, sr//2, m_total)
 n_grid = 36
@@ -25,14 +24,7 @@ a = np.arange(m_total).reshape(1, 1, m_total)
 m_data = torch.from_numpy(z + a)
 n_sp = 3
 
-delay = np.zeros((n_mic, n_grid))
-for h, m in enumerate(ori_pairs):
-       dx = mic_array_layout[0, m[1]] - mic_array_layout[0, m[0]]
-       dy = mic_array_layout[1, m[1]] - mic_array_layout[1, m[0]]
-       for i in range(n_grid):
-                delay[h, i] = dx * np.cos(i *np.pi/18) + dy * np.sin(i * np.pi/18)
-delay = torch.from_numpy(delay).unsqueeze(dim=-1).expand(-1, -1, m_total)
-w = torch.exp(-2j * np.pi * m_data * delay)/V
+
 
 
 def Prep(data):
@@ -42,13 +34,24 @@ def Prep(data):
             input = torch.from_numpy(data["mix"]).unsqueeze(dim=0).float()
             input = torch.transpose(input, 2, 1)
             data["mix"] = input.squeeze()
+            R = data["R"]
         else:
             input = torch.from_numpy(data[0]).unsqueeze(dim=0).float()
             angle = torch.tensor(data[2]).unsqueeze(dim=0)
+            R = data[5]
             return_list = []
 
-
-
+        mic_array_layout = R - np.tile(R[:, 0].reshape((3, 1)), (1, n_mic))
+        pairs = ((0, 3), (1, 4), (2, 5), (0, 1), (2, 3), (4, 5))
+        ori_pairs = ((0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5))
+        delay = np.zeros((n_mic, n_grid))
+        for h, m in enumerate(ori_pairs):
+            dx = mic_array_layout[0, m[1]] - mic_array_layout[0, m[0]]
+            dy = mic_array_layout[1, m[1]] - mic_array_layout[1, m[0]]
+            for i in range(n_grid):
+                delay[h, i] = dx * np.cos(i * np.pi / 18) + dy * np.sin(i * np.pi / 18)
+        delay = torch.from_numpy(delay).unsqueeze(dim=-1).expand(-1, -1, m_total)
+        w = torch.exp(-2j * np.pi * m_data * delay) / V
         batch_size = input.size(0)
         mag, ph, real, image = stft.transform(input.reshape(-1, input.size()[-1]))
 
@@ -60,22 +63,22 @@ def Prep(data):
         channel = mag.size()[-1]
         mag = mag.view(batch_size, n_mic, -1, channel)
         ph = ph.view(batch_size, n_mic, -1, channel)
-        LPS = 10 * torch.log10(mag ** 2 + 10e-20)
+        #LPS = 10 * torch.log10(mag ** 2 + 10e-20)
         complex = (mag * torch.exp(ph * 1j))
         IPD_list = []
         for m in pairs:
             com_u1 = complex[:, m[0]]
             com_u2 = complex[:, m[1]]
-            IPD = torch.angle(com_u1 * torch.conj(com_u2))
-            IPD /= (frequency_vector + 1.0)[:, None]
-            IPD = IPD % np.pi
+            IPD = torch.angle(com_u1) - torch.angle(com_u2)
+            #IPD /= (frequency_vector + 1.0)[:, None]
+            #IPD = IPD % (2 * np.pi)
             IPD = IPD.unsqueeze(dim=1)
             IPD_list.append(IPD)
         IPD = torch.cat(IPD_list, dim=1)
         complex = complex.unsqueeze(dim=2).expand(-1, -1, n_grid, -1, -1)
         for i in range(n_sp):
             ang = angle[:, i]
-            steering_vector = __get_steering_vector(ang, pairs)
+            steering_vector = __get_steering_vector(ang, pairs, mic_array_layout)
             steering_vector = steering_vector.unsqueeze(dim=-1)
             AF = steering_vector * torch.exp(1j * IPD)
             AF = AF/(torch.sqrt(AF.real ** 2 + AF.imag**2) + 10e-20)
@@ -96,7 +99,7 @@ def Prep(data):
             return return_list
 
 
-def __get_steering_vector(angle, pairs):
+def __get_steering_vector(angle, pairs, mic_array_layout):
         steering_vector = np.zeros((len(angle), len(frequency_vector), 6), dtype='complex')
 
         # get delay
@@ -112,7 +115,6 @@ def __get_steering_vector(angle, pairs):
         steering_vector = torch.from_numpy(steering_vector)
 
         return torch.transpose(steering_vector, 1, 2)
-
 
 
 if __name__ == "__main__":

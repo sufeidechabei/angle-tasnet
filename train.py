@@ -12,7 +12,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 
 from asteroid.models import save_publishable
 from local.tac_dataset import TACDataset
-from torch.nn import L1Loss
+from torch.nn import MSELoss
 from asteroid.engine.optimizers import make_optimizer
 from asteroid.engine.system import System
 from conv_tasnet import TasNet
@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--exp_dir", default="exp/tmp", help="Full path to save best validation model")
 
 
-class TACSystem(System):
+class AngleSystem(System):
     def common_step(self, batch, batch_nb, train=True):
         data = batch
         targets = torch.stack(data["ref"]).transpose(1, 0).squeeze()
@@ -105,8 +105,8 @@ def main(conf):
         yaml.safe_dump(conf, outfile)
 
     # Define Loss function.
-    loss_func = L1Loss()
-    system = TACSystem(
+    loss_func = MSELoss()
+    system = AngleSystem(
         model=model,
         loss_func=loss_func,
         optimizer=optimizer,
